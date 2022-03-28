@@ -10,7 +10,6 @@ typedef struct bathroom {
   int capacity;
   bool *urinals;
   pthread_mutex_t mu;
-  pthread_cond_t full;
 } bathroom_t;
 
 bathroom_t *bathroom_t_create(const int capacity) {
@@ -19,7 +18,6 @@ bathroom_t *bathroom_t_create(const int capacity) {
   b->capacity = capacity;
   b->urinals = malloc(sizeof(bool) * capacity);
   pthread_mutex_init(&b->mu, NULL);
-  pthread_cond_init(&b->full, NULL);
   return b;
 }
 
@@ -36,8 +34,10 @@ void *someone_need_to_pee(void *br) {
   for (;;) {
     sleep(rand() % 3);
     pthread_mutex_lock(&b->mu);
-    while (b->count == b->capacity)
-      pthread_cond_wait(&b->full, &b->mu);
+    if (b->count == b->capacity) {
+        pthread_mutex_unlock(&b->mu);
+        continue;
+    }
     if (!b->urinals[b->count])
       b->urinals[b->count++] = true;
     printf("Peeing count = %d\n", b->count);
@@ -49,14 +49,13 @@ void *someone_need_to_pee(void *br) {
 void *finish_pee(void *br) {
   bathroom_t *b = (bathroom_t *)br;
   for (;;) {
-    sleep(rand() % 2);
+    sleep(rand() % 3);
     pthread_mutex_lock(&b->mu);
     if (!isempty(b) && b->urinals[--b->count]) {
       b->urinals[b->count] = false;
       printf("A people finish, count = %d\n", b->count);
     }
     pthread_mutex_unlock(&b->mu);
-    pthread_cond_signal(&b->full);
   }
   pthread_exit(NULL);
 }
