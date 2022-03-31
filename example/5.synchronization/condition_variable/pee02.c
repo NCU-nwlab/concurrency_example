@@ -57,8 +57,8 @@ void *someone_finish_pee(void *br) {
       b->urinals[b->count] = false;
       printf("A people finish, count = %d\n", b->count);
     }
-    pthread_mutex_unlock(&b->mu);
     pthread_cond_signal(&b->full);
+    pthread_mutex_unlock(&b->mu);
   }
   pthread_exit(NULL);
 }
